@@ -1,7 +1,7 @@
 {
-  "name": "prompt-chaining-article-generator",
+  "name": "medical-appointment-langgraph",
   "version": "1.0.0",
-  "description": "Technical article generator using LangChain prompt chaining with reusable templates",
+  "description": "Agente de agendamento e cancelamento de consultas com LangGraph, LangChain e OpenRouter",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
@@ -16,11 +16,12 @@
     "langgraph:serve": "npx @langchain/langgraph-cli dev"
   },
   "keywords": [
+    "langgraph",
     "langchain",
-    "prompt-chaining",
-    "article-generator",
+    "medical-appointments",
+    "healthcare",
     "openrouter",
-    "ollama"
+    "typescript"
   ],
   "author": "erickwendel",
   "license": "MIT",
