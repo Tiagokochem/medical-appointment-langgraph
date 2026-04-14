@@ -1,22 +1,22 @@
 # Medical Appointment Assistant (LangGraph)
 
-API em **Node.js** + **Fastify** que expõe um fluxo conversacional para **agendar** e **cancelar** consultas. O cérebro do sistema é um grafo **LangGraph** com nós de intenção, execução da ação e geração de resposta. Os modelos são acessados via **OpenRouter**; o estado do grafo é validado com **Zod**.
+A **Node.js** + **Fastify** API that exposes a conversational flow to **book** and **cancel** medical appointments. The core is a **LangGraph** workflow with nodes for intent detection, action execution, and reply generation. Models are reached through **OpenRouter**; graph state is validated with **Zod**.
 
-Os agendamentos e a equipe clínica ficam persistidos em **SQLite** (`node:sqlite`), com seed inicial ao criar o banco — assim o serviço sobrevive a reinícios e fica distinto de um protótipo só em memória.
+Appointments and the clinical roster are stored in **SQLite** (`node:sqlite`) with an initial seed when the database is first created, so the service survives restarts—unlike a purely in-memory demo.
 
-## Requisitos
+## Requirements
 
 - Node.js **24+**
-- Chave da API [OpenRouter](https://openrouter.ai/)
+- An [OpenRouter](https://openrouter.ai/) API key
 
-## Configuração
+## Setup
 
 ```bash
 cp .env.example .env
-# Edite OPENROUTER_API_KEY e, se quiser, APPOINTMENTS_DB_PATH (padrão: data/clinic.sqlite)
+# Set OPENROUTER_API_KEY and optionally APPOINTMENTS_DB_PATH (default: data/clinic.sqlite)
 ```
 
-## Uso
+## Usage
 
 ```bash
 npm install
@@ -25,35 +25,35 @@ npm run dev
 
 ### Endpoints
 
-| Método | Caminho | Descrição |
-|--------|---------|-----------|
-| `GET` | `/health` | Status do serviço e tempo de atividade |
-| `GET` | `/v1/clinicians` | Lista clínicos (seed no SQLite) |
-| `POST` | `/v1/assistant/message` | Corpo: `{ "text": "sua mensagem (mín. 10 caracteres)" }`. Resposta: `{ ok, data }` com o estado final do grafo |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service status and uptime |
+| `GET` | `/v1/clinicians` | Clinician list (SQLite seed) |
+| `POST` | `/v1/assistant/message` | Body: `{ "text": "your message (min. 10 chars)" }`. Response: `{ ok, data }` with the final graph state |
 
-Exemplo:
+Example:
 
 ```bash
 curl -s http://localhost:3000/health
 curl -s http://localhost:3000/v1/clinicians
 curl -s -X POST -H "Content-Type: application/json" \
-  -d '{"text":"Quero agendar com o Dr. Renato Veiga amanhã às 10h, sou Ana Costa, check-up."}' \
+  -d '{"text":"I want to book with Dr. Renato Veiga tomorrow at 10am, I am Ana Costa, check-up."}' \
   http://localhost:3000/v1/assistant/message
 ```
 
-## Arquitetura do grafo
+## Graph architecture
 
 ```
 START → identifyIntent → [schedule | cancel | message] → message → END
 ```
 
-- **identifyIntent**: classifica intenção e extrai campos (com lista de clínicos vinda do banco).
-- **schedule** / **cancel**: aplicam regras no `AppointmentService` (SQLite).
-- **message**: gera a resposta ao usuário com o LLM.
+- **identifyIntent**: classifies intent and extracts fields (clinicians loaded from the database).
+- **schedule** / **cancel**: apply rules via `AppointmentService` (SQLite).
+- **message**: generates the user-facing reply with the LLM.
 
-## Testes
+## Tests
 
-Os testes E2E chamam a API real e o modelo; é necessário `OPENROUTER_API_KEY` válida:
+E2E tests hit the real API and model; a valid `OPENROUTER_API_KEY` is required:
 
 ```bash
 npm run test:e2e
@@ -65,8 +65,8 @@ npm run test:e2e
 npm run langgraph:serve
 ```
 
-Requer `langgraph.json` e variáveis em `.env`.
+Requires `langgraph.json` and variables in `.env`.
 
-## Licença
+## License
 
 MIT
