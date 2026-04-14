@@ -45,20 +45,25 @@ export class OpenRouterService {
                 new SystemMessage(systemPrompt),
                 new HumanMessage(userPrompt)
             ]
-            const data = await agent.invoke({ messages })
+            const data = await agent.invoke({ messages });
+            const structured = data.structuredResponse;
+            if (structured === undefined) {
+                return {
+                    success: false,
+                    error: 'Resposta estruturada vazia do modelo',
+                };
+            }
             return {
                 success: true,
-                data: data.structuredResponse,
-            }
+                data: structured,
+            };
         } catch (error) {
-            console.error('Error OpenRouterService', error)
+            console.error('Error OpenRouterService', error);
 
             return {
-                success: true,
-                error: error instanceof Error ?
-                    error.message :
-                    String(error),
-            }
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+            };
         }
     }
 }

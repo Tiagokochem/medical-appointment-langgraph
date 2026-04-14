@@ -1,15 +1,26 @@
 import { getSystemPrompt, getUserPromptTemplate, IntentSchema } from '../../prompts/v1/identifyIntent.ts';
-import { professionals } from '../../services/appointmentService.ts';
+import type { AppointmentService } from '../../services/appointmentService.ts';
 import { OpenRouterService } from '../../services/openRouterService.ts';
 import type { GraphState } from '../graph.ts';
 
-export function createIdentifyIntentNode(llmClient: OpenRouterService) {
+export function createIdentifyIntentNode(
+  llmClient: OpenRouterService,
+  appointmentService: AppointmentService,
+) {
   return async (state: GraphState): Promise<Partial<GraphState>> => {
     console.log(`🔍 Identifying intent...`);
-   const input = state.messages.at(-1)!.text;
+    const lastMessage = state.messages.at(-1)!;
+    const rawContent = lastMessage.content;
+    const input =
+      typeof rawContent === 'string'
+        ? rawContent
+        : Array.isArray(rawContent)
+          ? rawContent.map((c) => (typeof c === 'string' ? c : JSON.stringify(c))).join('\n')
+          : String(rawContent);
 
     try {
-      const systemPrompt = getSystemPrompt(professionals)
+      const clinicians = appointmentService.getClinicians();
+      const systemPrompt = getSystemPrompt(clinicians);
       const userPrompt = getUserPromptTemplate(input)
       const result = await llmClient.generateStructured(
         systemPrompt,

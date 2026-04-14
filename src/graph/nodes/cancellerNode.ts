@@ -14,9 +14,9 @@ export function createCancellerNode(appointmentService: AppointmentService) {
     try {
       console.log(`❌ Cancelling appointment...`);
 
-      const validation = CancelRequiredFieldsSchema.safeParse(state)
-      if (validation.error) {
-        const errorMessages = validation.error.errors.map(e => e.message).join(', ')
+      const validation = CancelRequiredFieldsSchema.safeParse(state);
+      if (!validation.success) {
+        const errorMessages = validation.error.errors.map(e => e.message).join(', ');
         console.log(`⚠️  Validation failed: ${errorMessages}`);
         return {
           actionSuccess: false,

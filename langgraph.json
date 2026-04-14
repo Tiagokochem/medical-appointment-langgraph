@@ -1,5 +1,5 @@
 {
-  "node_version": "20",
+  "node_version": "24",
   "graphs": {
     "medical_appointments": "./src/graph/factory.ts:graph"
   },

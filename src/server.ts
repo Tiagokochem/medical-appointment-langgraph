@@ -1,42 +1,60 @@
 import { HumanMessage } from 'langchain';
-import { buildGraph } from './graph/factory.ts';
+import { getAgentServices } from './graph/factory.ts';
 
 import Fastify from 'fastify';
 
-const graph = buildGraph();
+const { graph, appointmentService } = getAgentServices();
+
+const startedAt = Date.now();
 
 export const createServer = () => {
-    const app = Fastify();
+  const app = Fastify();
 
-    app.post('/chat', {
-        schema: {
-            body: {
-                type: 'object',
-                required: ['question'],
-                properties: {
-                    question: { type: 'string', minLength: 10 },
-                },
-            }
-        }
-    }, async function (request, reply) {
-        try {
-            const { question } = request.body as {
-                question: string;
-            };
+  app.get('/health', async () => ({
+    ok: true,
+    service: 'medical-appointment-assistant',
+    uptimeMs: Date.now() - startedAt,
+  }));
 
-            const response = await graph.invoke({
-                messages: [new HumanMessage(question)],
-            });
+  app.get('/v1/clinicians', async () => ({
+    ok: true,
+    data: appointmentService.getClinicians(),
+  }));
 
-            return response
+  app.post(
+    '/v1/assistant/message',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['text'],
+          properties: {
+            text: { type: 'string', minLength: 10 },
+          },
+        },
+      },
+    },
+    async function (request, reply) {
+      try {
+        const { text } = request.body as { text: string };
 
-        } catch (error) {
-            console.error('❌ Error processing request:', error);
-            return reply.status(500).send({
-                error: 'An error occurred while processing your request.',
-            });
-        }
-    });
+        const result = await graph.invoke({
+          messages: [new HumanMessage(text)],
+        });
 
-    return app;
+        return {
+          ok: true,
+          data: result,
+        };
+      } catch (error) {
+        console.error('❌ Error processing request:', error);
+        return reply.status(500).send({
+          ok: false,
+          error: 'An error occurred while processing your request.',
+        });
+      }
+    },
+  );
+
+  return app;
 };

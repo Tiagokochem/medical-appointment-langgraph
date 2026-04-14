@@ -27,7 +27,7 @@ export function createMessageGeneratorNode(llmClient: OpenRouterService) {
             )
             console.log(`✅ Message generated:`, result.data?.message ?? result.data ?? result);
 
-            if (result.error) {
+            if (!result.success) {
                 console.log(`⚠️  Message generation failed: ${result.error}`);
                 return {
 

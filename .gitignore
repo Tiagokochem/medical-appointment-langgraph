@@ -5,6 +5,8 @@ dist/
 .DS_Store
 coverage/
 outputs/
+data/*.sqlite
+data/*.sqlite-journal
 
 # LangGraph API
 .langgraph_api

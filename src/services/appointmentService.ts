@@ -1,85 +1,104 @@
-const today = new Date();
-const todayAtElevenAM = new Date(today);
-todayAtElevenAM.setUTCHours(11, 0, 0, 0);
+import type { DatabaseSync } from 'node:sqlite';
 
-const tomorrow = new Date();
-tomorrow.setDate(today.getDate() + 1);
-const tomorrowAtTwoPM = new Date(tomorrow);
-tomorrowAtTwoPM.setUTCHours(14, 0, 0, 0);
+import type { ClinicianRow } from '../persistence/clinicDatabase.ts';
 
-export const professionals = [
-    {
-        id: 1,
-        name: 'Dr. Alicio da Silva',
-        specialty: 'Cardiologia',
-    },
-    {
-        id: 2,
-        name: 'Dra. Ana Pereira',
-        specialty: 'Dermatologia',
-    },
-    {
-        id: 3,
-        name: 'Dra. Carol Gomes',
-        specialty: 'Neurologia',
-    },
-];
+export type { ClinicianRow };
 
-
-const appointments = [
-    {
-        date: todayAtElevenAM.toISOString(),
-        patientName: 'Joao da Silva',
-        reason: 'check-up regular',
-        professionalId: professionals[0].id
-    },
-    {
-        date: tomorrowAtTwoPM.toISOString(),
-        patientName: 'Luana Costa',
-        reason: 'Erupção cutânea',
-        professionalId: professionals[1].id
-    },
-]
-
+type AppointmentRow = {
+  id: number;
+  professionalId: number;
+  patientName: string;
+  reason: string;
+  date: string;
+};
 
 export class AppointmentService {
+  private readonly db: DatabaseSync;
 
-    getAppointmentsForProfessional(professionalId: number, date: Date, patientName?: string) {
-        return appointments.find(appointment =>
-            appointment.professionalId === professionalId &&
-            new Date(appointment.date).getTime() === date.getTime() &&
-            (!patientName || appointment.patientName === patientName)
-        );
+  constructor(db: DatabaseSync) {
+    this.db = db;
+  }
+
+  getClinicians(): ClinicianRow[] {
+    return this.db
+      .prepare('SELECT id, name, specialty FROM clinicians ORDER BY id')
+      .all() as ClinicianRow[];
+  }
+
+  getAppointmentsForProfessional(
+    professionalId: number,
+    date: Date,
+    patientName?: string,
+  ): AppointmentRow | undefined {
+    const iso = date.toISOString();
+    if (patientName !== undefined) {
+      return this.db
+        .prepare(
+          `SELECT id,
+                  clinician_id AS professionalId,
+                  patient_name AS patientName,
+                  reason,
+                  starts_at AS date
+           FROM appointments
+           WHERE clinician_id = ? AND starts_at = ? AND patient_name = ?`,
+        )
+        .get(professionalId, iso, patientName) as AppointmentRow | undefined;
     }
 
-    checkAvailability(professionalId: number, date: Date): boolean {
-        const alreadyBooked = this.getAppointmentsForProfessional(professionalId, date);
-        return !alreadyBooked; // Returns true if available (not booked), false if booked
+    return this.db
+      .prepare(
+        `SELECT id,
+                clinician_id AS professionalId,
+                patient_name AS patientName,
+                reason,
+                starts_at AS date
+         FROM appointments
+         WHERE clinician_id = ? AND starts_at = ?`,
+      )
+      .get(professionalId, iso) as AppointmentRow | undefined;
+  }
+
+  checkAvailability(professionalId: number, date: Date): boolean {
+    const iso = date.toISOString();
+    const row = this.db
+      .prepare(
+        `SELECT id FROM appointments WHERE clinician_id = ? AND starts_at = ? LIMIT 1`,
+      )
+      .get(professionalId, iso);
+    return row === undefined;
+  }
+
+  bookAppointment(
+    professionalId: number,
+    date: Date,
+    patientName: string,
+    reason: string,
+  ): AppointmentRow {
+    if (!this.checkAvailability(professionalId, date)) {
+      throw new Error('Horário indisponível para este profissional');
     }
 
-    bookAppointment(professionalId: number, date: Date, patientName: string, reason: string) {
-        if (!this.checkAvailability(professionalId, date)) {
-            throw new Error('Horário indisponível para este profissional');
-        }
+    const row = this.db
+      .prepare(
+        `INSERT INTO appointments (clinician_id, patient_name, reason, starts_at)
+         VALUES (?, ?, ?, ?)
+         RETURNING id,
+                   clinician_id AS professionalId,
+                   patient_name AS patientName,
+                   reason,
+                   starts_at AS date`,
+      )
+      .get(professionalId, patientName, reason, date.toISOString()) as AppointmentRow;
 
-        const newAppointment = {
-            date: date.toISOString(),
-            patientName,
-            reason,
-            professionalId
-        };
+    return row;
+  }
 
-        appointments.push(newAppointment);
-        return newAppointment;
-    }
-    cancelAppointment(professionalId: number, patientName: string, date: Date) {
-        const hasBooked = this.getAppointmentsForProfessional(professionalId, date, patientName);
-        if (!hasBooked) {
-            throw new Error('Agendamento não encontrado para cancelamento');
-        }
-
-        const index = appointments.indexOf(hasBooked);
-        appointments.splice(index, 1);
+  cancelAppointment(professionalId: number, patientName: string, date: Date) {
+    const booked = this.getAppointmentsForProfessional(professionalId, date, patientName);
+    if (!booked) {
+      throw new Error('Agendamento não encontrado para cancelamento');
     }
 
+    this.db.prepare('DELETE FROM appointments WHERE id = ?').run(booked.id);
+  }
 }
